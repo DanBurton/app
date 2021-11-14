@@ -1,25 +1,128 @@
-import logo from './logo.svg';
+import React from 'react';
 import './App.css';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+function renderPhase(phase, parent) {
+  switch (phase) {
+    case 'loading':
+      return <Loading {...{phase, parent}} />;
+    case 'start':
+      return <Start {...{phase, parent}} />;
+    case 'begin':
+      return <Begin {...{phase, parent}} />;
+    default:
+      return <Unknown {...{phase, parent} }/>;
+  }
+}
+
+class Loading extends React.Component {
+  render() {
+    console.log('render: loading');
+    return (<p>loading phase</p>);
+  }
+}
+
+class Start extends React.Component {
+  begin() {
+    console.log('fn: start.begin()');
+    const {parent} = this.props;
+    parent.phaseChange('begin');
+  }
+  render() {
+    console.log('render: start');
+    return (<div>
+      <p>start phase</p>
+      <button onClick={() => this.begin()}>Begin</button>
+    </div>);
+  }
+}
+
+function st(thiz, key, def) {
+  const val = (thiz.state || {})[key];
+  return val !== undefined ? val : def;
+}
+
+class Begin extends React.Component {
+  componentDidMount() {
+    const itemsStr = localStorage.getItem('items');
+    if (itemsStr) {
+      const items = JSON.parse(itemsStr);
+      console.log('loaded', items);
+      if (Array.isArray(items)) {
+        this.setState({items});
+      }
+    }
+  }
+  componentDidUpdate() {
+    const {items} = this.state;
+    localStorage.setItem('items', JSON.stringify(items));
+  }
+  addItem(item) {
+    console.log(`fn: begin.addItem(${JSON.stringify(item)})`);
+    const items = [...st(this, 'items', []), item];
+    console.log(items);
+    this.setState({items});
+  }
+  removeItem(idx) {
+    console.log(`fn: begin.removeItem(${JSON.stringify(idx)})`);
+    const items = [...st(this, 'items', [])];
+    items.splice(idx, 1);
+    this.setState({items});
+  }
+  _handleKeydown(e) {
+    if (e.key === 'Enter') this._handleAddItem();
+  }
+  _handleAddItem() {
+    const theInput = document.getElementById('theInput');
+    const item = theInput.value;
+    theInput.value = '';
+    theInput.focus();
+    this.addItem(item);
+  }
+  render() {
+    const items = st(this, 'items', []);
+    console.log('render: begin');
+    console.log(items);
+    return (<div>
+      <ol>
+        {items.map((item, idx) => {
+          return (
+            <li key={idx}>
+              {item}
+              <button onClick={() => this.removeItem(idx)}>-</button>
+            </li>
+          );
+        })}
+      </ol>
+      <input id="theInput" onKeyDown={(e) => this._handleKeydown(e)} />
+      <button onClick={() => this._handleAddItem()}>+</button>
+    </div>);
+  }
+}
+
+class Unknown extends React.Component {
+  render() {
+    console.log('render: unknown');
+    return (<p>Unknown phase '{this.props.phase}'</p>);
+  }
+}
+
+class App extends React.Component {
+  componentDidMount() {
+    this.setState({phase: 'start'});
+  }
+  phaseChange(phase) {
+    console.log('phase change', phase);
+    this.setState({phase});
+  }
+  render() {
+    const state = this.state || {};
+    const phase = state.phase || 'loading';
+    return (
+      <div className="App">
+        {renderPhase(phase, this)}
+      </div>
+    );
+  }
 }
 
 export default App;
