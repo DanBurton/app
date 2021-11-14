@@ -7,8 +7,8 @@ function renderPhase(phase, parent) {
       return <Loading {...{phase, parent}} />;
     case 'start':
       return <Start {...{phase, parent}} />;
-    case 'begin':
-      return <Begin {...{phase, parent}} />;
+    case 'todo':
+      return <Todo {...{phase, parent}} />;
     default:
       return <Unknown {...{phase, parent} }/>;
   }
@@ -22,16 +22,18 @@ class Loading extends React.Component {
 }
 
 class Start extends React.Component {
-  begin() {
-    console.log('fn: start.begin()');
+  todo() {
+    const {phase} = this.props;
+    console.log(`fn: ${phase}.todo()`);
     const {parent} = this.props;
-    parent.phaseChange('begin');
+    parent.phaseChange('todo');
   }
   render() {
-    console.log('render: start');
+    const {phase} = this.props;
+    console.log(`render: ${phase}`);
     return (<div>
-      <p>start phase</p>
-      <button onClick={() => this.begin()}>Begin</button>
+      <h1>start</h1>
+      <button onClick={() => this.todo()}>todo</button>
     </div>);
   }
 }
@@ -41,14 +43,17 @@ function st(thiz, key, def) {
   return val !== undefined ? val : def;
 }
 
-class Begin extends React.Component {
+class Todo extends React.Component {
   componentDidMount() {
     const itemsStr = localStorage.getItem('items');
     if (itemsStr) {
       const items = JSON.parse(itemsStr);
-      console.log('loaded', items);
+      const state = {items};
       if (Array.isArray(items)) {
-        this.setState({items});
+        console.log('loaded', state);
+        this.setState(state);
+      } else {
+        console.log('failed to load', state);
       }
     }
   }
@@ -57,13 +62,14 @@ class Begin extends React.Component {
     localStorage.setItem('items', JSON.stringify(items));
   }
   addItem(item) {
-    console.log(`fn: begin.addItem(${JSON.stringify(item)})`);
+    const {phase} = this.props;
+    console.log(`fn: ${phase}.addItem(${JSON.stringify(item)})`);
     const items = [...st(this, 'items', []), item];
-    console.log(items);
     this.setState({items});
   }
   removeItem(idx) {
-    console.log(`fn: begin.removeItem(${JSON.stringify(idx)})`);
+    const {phase} = this.props;
+    console.log(`fn: ${phase}.removeItem(${JSON.stringify(idx)})`);
     const items = [...st(this, 'items', [])];
     items.splice(idx, 1);
     this.setState({items});
@@ -79,9 +85,9 @@ class Begin extends React.Component {
     this.addItem(item);
   }
   render() {
+    const {phase, parent} = this.props;
     const items = st(this, 'items', []);
-    console.log('render: begin');
-    console.log(items);
+    console.log(`render: ${phase}`, items);
     return (<div>
       <ol>
         {items.map((item, idx) => {
@@ -95,6 +101,8 @@ class Begin extends React.Component {
       </ol>
       <input id="theInput" onKeyDown={(e) => this._handleKeydown(e)} />
       <button onClick={() => this._handleAddItem()}>+</button>
+      <br /><br />
+      <button onClick={() => parent.phaseChange('start')}>back to start</button>
     </div>);
   }
 }
@@ -111,7 +119,7 @@ class App extends React.Component {
     this.setState({phase: 'start'});
   }
   phaseChange(phase) {
-    console.log('phase change', phase);
+    console.log(`fn: App.phaseChange(${JSON.stringify(phase)})`);
     this.setState({phase});
   }
   render() {
